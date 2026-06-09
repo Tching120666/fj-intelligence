@@ -6,6 +6,7 @@ from datetime import datetime
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+
 SEARCH_SYSTEM = (
     "Tu es un assistant specialise en actualites financieres. "
     "Utilise web_search pour trouver les dernieres actualites des marches financiers du jour. "
@@ -41,8 +42,7 @@ ANALYSIS_SYSTEM = (
 )
 
 IMPACT_EMOJI = {"FORT": "🔴", "MODERE": "🟡", "FAIBLE": "🟢"}
-SENTIMENT_EMOJI = {"RISK-ON": "📈", "RISK-OFF": "📉", "NEUTRE": "➡️"}
-async def call_claude(system, user_msg, use_web_search=False):
+SENTIMENT_EMOJI = {"RISK-ON": "📈", "RISK-OFF": "📉", "NEUTRE": "➡️"}async def call_claude(system, user_msg, use_web_search=False):
     body = {
         "model": "claude-sonnet-4-20250514",
         "max_tokens": 1000,
@@ -51,7 +51,6 @@ async def call_claude(system, user_msg, use_web_search=False):
     }
     if use_web_search:
         body["tools"] = [{"type": "web_search_20250305", "name": "web_search"}]
-
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(
             "https://api.anthropic.com/v1/messages",
@@ -73,7 +72,6 @@ def parse_structured(text):
             continue
         k, v = line.split(":", 1)
         m[k.strip().upper()] = v.strip()
-
     def theme(n):
         t = m.get(f"THEME{n}_TITRE")
         if not t:
@@ -82,24 +80,12 @@ def parse_structured(text):
             "titre": t,
             "impact": m.get(f"THEME{n}_IMPACT", "MODERE"),
             "actifs": m.get(f"THEME{n}_ACTIFS", ""),
-            "synthese": m.get(f"THEME{n}_SYNTHESE", ""),
-            "hypothese": m.get(f"THEME{n}_HYPOTHESE", ""),
-        }
-
-    return {
-        "sentiment": m.get("SENTIMENT", "NEUTRE"),
-        "score": m.get("SCORE", "0"),
-        "resume": m.get("RESUME", ""),
-        "themes": [t for t in (theme(1), theme(2), theme(3), theme(4), theme(5)) if t],
-        "vigilance": [v for v in (m.get("VIGIL1"), m.get("VIGIL2"), m.get("VIGIL3")) if v],
-    }
-  def format_telegram(data):
+            "synthese": mdef format_telegram(data):
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
     sem = SENTIMENT_EMOJI.get(data["sentiment"], "➡️")
     score = int(data["score"]) if data["score"].lstrip("-").isdigit() else 0
     bar_filled = round(abs(score) / 10)
     bar = ("🟥" if score < 0 else "🟩") * bar_filled + "⬜" * (10 - bar_filled)
-
     lines = [
         f"📡 *FJ Intelligence* — {now}",
         f"",
@@ -112,7 +98,6 @@ def parse_structured(text):
         f"*THEMES & HYPOTHESES*",
         f"",
     ]
-
     for t in data["themes"]:
         emoji = IMPACT_EMOJI.get(t["impact"], "🟡")
         lines += [
@@ -121,13 +106,11 @@ def parse_structured(text):
             f"💡 _{t['hypothese']}_",
             f"",
         ]
-
     if data["vigilance"]:
         lines += ["━━━━━━━━━━━━━━━━", "*⚠️ Points de vigilance*", ""]
         for v in data["vigilance"]:
             lines.append(f"▸ {v}")
         lines.append("")
-
     lines.append("_⚠️ Analyse IA — pas un conseil en investissement_")
     return "\n".join(lines)
 
@@ -145,18 +128,15 @@ async def send_telegram(message):
 async def main():
     now = datetime.now()
     date_str = now.strftime("%A %d %B %Y a %H:%M")
-
     news = await call_claude(
         SEARCH_SYSTEM,
         f"Date : {date_str}. Trouve les dernieres actualites des marches financiers.",
         use_web_search=True,
     )
-
     structured = await call_claude(
         ANALYSIS_SYSTEM,
         f"Voici le resume des actualites du jour :\n\n{news}",
     )
-
     data = parse_structured(structured)
     message = format_telegram(data)
     await send_telegram(message)
@@ -164,4 +144,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-  
