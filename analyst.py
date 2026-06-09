@@ -7,7 +7,7 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-SEARCH_SYSTEM = "  SEARCH_SYSTEM = "You are a financial news assistant. Use the web_search tool now to search for: 1) financial markets news today 2) forex news today 3) central bank news today. Then summarize the key findings in plain text. You MUST use the web_search tool."
+SEARCH_SYSTEM = "  SEARCH_SYSTEM ="You are a financial news assistant. Use web_search to find financial markets news today, forex news, central bank news. Summarize in plain text."
 ANALYSIS_SYSTEM = "Tu es un analyste senior. Reponds avec ce format exact ligne par ligne:\nSENTIMENT: RISK-ON ou RISK-OFF ou NEUTRE\nSCORE: nombre entre -100 et 100\nRESUME: une phrase\nTHEME1_TITRE: titre\nTHEME1_IMPACT: FORT ou MODERE ou FAIBLE\nTHEME1_ACTIFS: liste\nTHEME1_SYNTHESE: une phrase\nTHEME1_HYPOTHESE: hypothese\nTHEME2_TITRE: titre\nTHEME2_IMPACT: FORT ou MODERE ou FAIBLE\nTHEME2_ACTIFS: liste\nTHEME2_SYNTHESE: une phrase\nTHEME2_HYPOTHESE: hypothese\nTHEME3_TITRE: titre\nTHEME3_IMPACT: FORT ou MODERE ou FAIBLE\nTHEME3_ACTIFS: liste\nTHEME3_SYNTHESE: une phrase\nTHEME3_HYPOTHESE: hypothese\nVIGIL1: vigilance 1\nVIGIL2: vigilance 2"
 
 
