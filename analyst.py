@@ -3,11 +3,21 @@ from datetime import datetime
 AK=os.environ["ANTHROPIC_API_KEY"]
 TB=os.environ["TELEGRAM_BOT_TOKEN"]
 TC=os.environ["TELEGRAM_CHAT_ID"]
-SS="You are a financial news researcher. Use the web_search tool to search for: financial markets news today. Then write a detailed summary of what you found including specific market moves, central bank news, economic data, and trading themes. Write at least 200 words."
 AS="You are a senior trading analyst. Read this news summary and respond with EXACTLY these lines, nothing else:\nSENTIMENT: RISK-ON or RISK-OFF or NEUTRE\nSCORE: number between -100 and 100\nRESUME: one sentence summary\nTHEME1_TITRE: short title\nTHEME1_IMPACT: FORT or MODERE or FAIBLE\nTHEME1_ACTIFS: USD,Gold,SP500\nTHEME1_SYNTHESE: one sentence\nTHEME1_HYPOTHESE: trading hypothesis\nTHEME2_TITRE: short title\nTHEME2_IMPACT: FORT or MODERE or FAIBLE\nTHEME2_ACTIFS: assets\nTHEME2_SYNTHESE: one sentence\nTHEME2_HYPOTHESE: trading hypothesis\nTHEME3_TITRE: short title\nTHEME3_IMPACT: FORT or MODERE or FAIBLE\nTHEME3_ACTIFS: assets\nTHEME3_SYNTHESE: one sentence\nTHEME3_HYPOTHESE: trading hypothesis\nVIGIL1: first watch point\nVIGIL2: second watch point"
-async def claude(sys,msg,ws=False):
- b={"model":"claude-sonnet-4-20250514","max_tokens":1000,"system":sys,"messages":[{"role":"user","content":msg}]}
- if ws:b["tools"]=[{"type":"web_search_20250305","name":"web_search"}]
+async def search_news():
+ b={"model":"claude-sonnet-4-20250514","max_tokens":1000,"system":"Use web_search to find financial markets news today. Summarize what you find.","messages":[{"role":"user","content":"Search for financial markets news today "+datetime.now().strftime("%B %d %Y")+" and give me a detailed summary."}],"tools":[{"type":"web_search_20250305","name":"web_search"}]}
+ async with httpx.AsyncClient(timeout=60) as c:
+  r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
+  data=r.json()
+  parts=[]
+  for x in data.get("content",[]):
+   if x.get("type")=="text":parts.append(x["text"])
+   elif x.get("type")=="tool_result":
+    for y in x.get("content",[]):
+     if y.get("type")=="text":parts.append(y["text"])
+  return " ".join(parts)
+async def analyse(news):
+ b={"model":"claude-sonnet-4-20250514","max_tokens":1000,"system":AS,"messages":[{"role":"user","content":"News:\n\n"+news}]}
  async with httpx.AsyncClient(timeout=60) as c:
   r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
   return "".join(x["text"] for x in r.json().get("content",[]) if x["type"]=="text")
@@ -35,12 +45,12 @@ async def send(msg):
  async with httpx.AsyncClient(timeout=30) as c:
   await c.post("https://api.telegram.org/bot"+TB+"/sendMessage",json={"chat_id":TC,"text":msg,"parse_mode":"Markdown"})
 async def main():
- news=await claude(SS,"Today is "+datetime.now().strftime("%B %d %Y")+". Search and summarize the latest financial markets news.",True)
+ news=await search_news()
  print("NEWS LENGTH:"+str(len(news)))
- print("NEWS:"+news[:500])
- if len(news)<50:news="Fed holds rates steady. Dollar weakens. S&P500 rises 0.5%. Gold near all-time highs. Oil mixed."
- structured=await claude(AS,"Here is todays financial news summary:\n\n"+news)
- print("STRUCTURED:"+structured[:500])
+ print("NEWS:"+news[:300])
+ if len(news)<50:news="Fed holds rates. Dollar mixed. S&P500 flat. Gold near highs. Oil volatile on supply concerns."
+ structured=await analyse(news)
+ print("STRUCTURED:"+structured[:300])
  data=parse(structured)
  await send(fmt(data))
 asyncio.run(main())
