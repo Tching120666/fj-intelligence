@@ -3,21 +3,21 @@ from datetime import datetime
 AK=os.environ["ANTHROPIC_API_KEY"]
 TB=os.environ["TELEGRAM_BOT_TOKEN"]
 TC=os.environ["TELEGRAM_CHAT_ID"]
-AS="You are a senior trading analyst. Read this news summary and respond with EXACTLY these lines, nothing else:\nSENTIMENT: RISK-ON or RISK-OFF or NEUTRE\nSCORE: number between -100 and 100\nRESUME: one sentence summary\nTHEME1_TITRE: short title\nTHEME1_IMPACT: FORT or MODERE or FAIBLE\nTHEME1_ACTIFS: USD,Gold,SP500\nTHEME1_SYNTHESE: one sentence\nTHEME1_HYPOTHESE: trading hypothesis\nTHEME2_TITRE: short title\nTHEME2_IMPACT: FORT or MODERE or FAIBLE\nTHEME2_ACTIFS: assets\nTHEME2_SYNTHESE: one sentence\nTHEME2_HYPOTHESE: trading hypothesis\nTHEME3_TITRE: short title\nTHEME3_IMPACT: FORT or MODERE or FAIBLE\nTHEME3_ACTIFS: assets\nTHEME3_SYNTHESE: one sentence\nTHEME3_HYPOTHESE: trading hypothesis\nVIGIL1: first watch point\nVIGIL2: second watch point"
-async def search_news():
- b={"model":"claude-sonnet-4-20250514","max_tokens":1000,"system":"Use web_search to find financial markets news today. Summarize what you find.","messages":[{"role":"user","content":"Search for financial markets news today "+datetime.now().strftime("%B %d %Y")+" and give me a detailed summary."}],"tools":[{"type":"web_search_20250305","name":"web_search"}]}
- async with httpx.AsyncClient(timeout=60) as c:
-  r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
-  data=r.json()
-  parts=[]
-  for x in data.get("content",[]):
-   if x.get("type")=="text":parts.append(x["text"])
-   elif x.get("type")=="tool_result":
-    for y in x.get("content",[]):
-     if y.get("type")=="text":parts.append(y["text"])
-  return " ".join(parts)
+AS="You are a senior trading analyst. Read this news and respond with EXACTLY these lines:\nSENTIMENT: RISK-ON or RISK-OFF or NEUTRE\nSCORE: number -100 to 100\nRESUME: one sentence\nTHEME1_TITRE: title\nTHEME1_IMPACT: FORT or MODERE or FAIBLE\nTHEME1_ACTIFS: assets\nTHEME1_SYNTHESE: one sentence\nTHEME1_HYPOTHESE: hypothesis\nTHEME2_TITRE: title\nTHEME2_IMPACT: FORT or MODERE or FAIBLE\nTHEME2_ACTIFS: assets\nTHEME2_SYNTHESE: one sentence\nTHEME2_HYPOTHESE: hypothesis\nTHEME3_TITRE: title\nTHEME3_IMPACT: FORT or MODERE or FAIBLE\nTHEME3_ACTIFS: assets\nTHEME3_SYNTHESE: one sentence\nTHEME3_HYPOTHESE: hypothesis\nVIGIL1: watch point\nVIGIL2: watch point"
+async def get_news():
+ urls=["https://feeds.bloomberg.com/markets/news.rss","https://www.investing.com/rss/news.rss","https://feeds.reuters.com/reuters/businessNews"]
+ headlines=[]
+ async with httpx.AsyncClient(timeout=15) as c:
+  for url in urls:
+   try:
+    r=await c.get(url,headers={"User-Agent":"Mozilla/5.0"})
+    import re
+    titles=re.findall(r"<title><!\[CDATA\[(.*?)\]\]></title>",r.text)+re.findall(r"<title>(.*?)</title>",r.text)
+    headlines+=titles[1:6]
+   except:pass
+ return "\n".join(headlines[:15]) if headlines else ""
 async def analyse(news):
- b={"model":"claude-sonnet-4-20250514","max_tokens":1000,"system":AS,"messages":[{"role":"user","content":"News:\n\n"+news}]}
+ b={"model":"claude-sonnet-4-20250514","max_tokens":1000,"system":AS,"messages":[{"role":"user","content":"Today is "+datetime.now().strftime("%B %d %Y")+". Here are the latest financial headlines:\n\n"+news+"\n\nAnalyze and respond in the exact format requested."}]}
  async with httpx.AsyncClient(timeout=60) as c:
   r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
   return "".join(x["text"] for x in r.json().get("content",[]) if x["type"]=="text")
@@ -45,10 +45,9 @@ async def send(msg):
  async with httpx.AsyncClient(timeout=30) as c:
   await c.post("https://api.telegram.org/bot"+TB+"/sendMessage",json={"chat_id":TC,"text":msg,"parse_mode":"Markdown"})
 async def main():
- news=await search_news()
- print("NEWS LENGTH:"+str(len(news)))
- print("NEWS:"+news[:300])
- if len(news)<50:news="Fed holds rates. Dollar mixed. S&P500 flat. Gold near highs. Oil volatile on supply concerns."
+ news=await get_news()
+ print("NEWS:"+news[:200])
+ if not news:news="Markets open mixed. Fed policy in focus. Dollar steady. Gold holds gains. Oil volatile."
  structured=await analyse(news)
  print("STRUCTURED:"+structured[:300])
  data=parse(structured)
