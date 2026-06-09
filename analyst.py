@@ -3,7 +3,7 @@ from datetime import datetime
 AK=os.environ["ANTHROPIC_API_KEY"]
 TB=os.environ["TELEGRAM_BOT_TOKEN"]
 TC=os.environ["TELEGRAM_CHAT_ID"]
-AS="You are a senior trading analyst. Read this news and respond with EXACTLY these lines:\nSENTIMENT: RISK-ON or RISK-OFF or NEUTRE\nSCORE: number -100 to 100\nRESUME: one sentence\nTHEME1_TITRE: title\nTHEME1_IMPACT: FORT or MODERE or FAIBLE\nTHEME1_ACTIFS: assets\nTHEME1_SYNTHESE: one sentence\nTHEME1_HYPOTHESE: hypothesis\nTHEME2_TITRE: title\nTHEME2_IMPACT: FORT or MODERE or FAIBLE\nTHEME2_ACTIFS: assets\nTHEME2_SYNTHESE: one sentence\nTHEME2_HYPOTHESE: hypothesis\nTHEME3_TITRE: title\nTHEME3_IMPACT: FORT or MODERE or FAIBLE\nTHEME3_ACTIFS: assets\nTHEME3_SYNTHESE: one sentence\nTHEME3_HYPOTHESE: hypothesis\nVIGIL1: watch point\nVIGIL2: watch point"
+AS="Tu es un analyste trading senior. Lis ces actualites et reponds avec EXACTEMENT ces lignes:\nSENTIMENT: RISK-ON ou RISK-OFF ou NEUTRE\nSCORE: nombre entre -100 et 100\nRESUME: une phrase\nTHEME1_TITRE: titre\nTHEME1_IMPACT: FORT ou MODERE ou FAIBLE\nTHEME1_ACTIFS: actifs\nTHEME1_SYNTHESE: une phrase\nTHEME1_HYPOTHESE: hypothese de trading\nTHEME2_TITRE: titre\nTHEME2_IMPACT: FORT ou MODERE ou FAIBLE\nTHEME2_ACTIFS: actifs\nTHEME2_SYNTHESE: une phrase\nTHEME2_HYPOTHESE: hypothese de trading\nTHEME3_TITRE: titre\nTHEME3_IMPACT: FORT ou MODERE ou FAIBLE\nTHEME3_ACTIFS: actifs\nTHEME3_SYNTHESE: une phrase\nTHEME3_HYPOTHESE: hypothese de trading\nVIGIL1: point de vigilance\nVIGIL2: point de vigilance"
 async def get_news():
  headlines=[]
  async with httpx.AsyncClient(timeout=15) as c:
@@ -13,13 +13,12 @@ async def get_news():
     titles=re.findall(r"<title><!\[CDATA\[(.*?)\]\]></title>",r.text)+re.findall(r"<title>(.*?)</title>",r.text)
     headlines+=titles[1:6]
    except:pass
- return "\n".join(headlines[:12]) if headlines else "Markets mixed. Fed policy uncertain. Dollar steady. Gold near highs. Oil volatile."
+ return "\n".join(headlines[:12]) if headlines else "Marches mixtes. Politique Fed incertaine. Dollar stable. Or proche des sommets. Petrole volatil."
 async def analyse(news):
- b={"model":"claude-haiku-4-5-20251001","max_tokens":2000,"system":AS,"messages":[{"role":"user","content":"Today is "+datetime.now().strftime("%B %d %Y")+". Headlines:\n\n"+news}]}
+ b={"model":"claude-haiku-4-5-20251001","max_tokens":2000,"system":AS,"messages":[{"role":"user","content":"Nous sommes le "+datetime.now().strftime("%d %B %Y")+". Voici les dernieres actualites financieres:\n\n"+news}]}
  async with httpx.AsyncClient(timeout=60) as c:
   r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
   resp=r.json()
-  print("API_RESP:"+str(resp)[:200])
   return "".join(x["text"] for x in resp.get("content",[]) if x["type"]=="text")
 def parse(text):
  m={}
@@ -46,10 +45,7 @@ async def send(msg):
   await c.post("https://api.telegram.org/bot"+TB+"/sendMessage",json={"chat_id":TC,"text":msg,"parse_mode":"Markdown"})
 async def main():
  news=await get_news()
- print("NEWS:"+news[:300])
  structured=await analyse(news)
- print("STRUCTURED:"+structured[:300])
  data=parse(structured)
- print("THEMES:"+str(len(data["themes"])))
  await send(fmt(data))
 asyncio.run(main())
