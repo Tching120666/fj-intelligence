@@ -1,3 +1,4 @@
+cat > /mnt/user-data/outputs/fj-telegram/analyst.py << 'ENDOFFILE'
 import os
 import httpx
 import asyncio
@@ -41,8 +42,11 @@ ANALYSIS_SYSTEM = (
     "Reponds UNIQUEMENT avec ces lignes. Rien dautre."
 )
 
-IMPACT_EMOJI = {"FORT": "🔴", "MODERE": "🟡", "FAIBLE": "🟢"}
-SENTIMENT_EMOJI = {"RISK-ON": "📈", "RISK-OFF": "📉", "NEUTRE": "➡️"}async def call_claude(system, user_msg, use_web_search=False):
+IMPACT_LABEL = {"FORT": "[FORT]", "MODERE": "[MODERE]", "FAIBLE": "[FAIBLE]"}
+SENTIMENT_LABEL = {"RISK-ON": "RISK-ON", "RISK-OFF": "RISK-OFF", "NEUTRE": "NEUTRE"}
+
+
+async def call_claude(system, user_msg, use_web_search=False):
     body = {
         "model": "claude-sonnet-4-20250514",
         "max_tokens": 1000,
@@ -72,51 +76,76 @@ def parse_structured(text):
             continue
         k, v = line.split(":", 1)
         m[k.strip().upper()] = v.strip()
+
     def theme(n):
-        t = m.get(f"THEME{n}_TITRE")
+        t = m.get("THEME" + str(n) + "_TITRE")
         if not t:
             return None
         return {
             "titre": t,
-            "impact": m.get(f"THEME{n}_IMPACT", "MODERE"),
-            "actifs": m.get(f"THEME{n}_ACTIFS", ""),
-            "synthese": mdef format_telegram(data):
+            "impact": m.get("THEME" + str(n) + "_IMPACT", "MODERE"),
+            "actifs": m.get("THEME" + str(n) + "_ACTIFS", ""),
+            "synthese": m.get("THEME" + str(n) + "_SYNTHESE", ""),
+            "hypothese": m.get("THEME" + str(n) + "_HYPOTHESE", ""),
+        }
+
+    return {
+        "sentiment": m.get("SENTIMENT", "NEUTRE"),
+        "score": m.get("SCORE", "0"),
+        "resume": m.get("RESUME", ""),
+        "themes": [t for t in (theme(1), theme(2), theme(3), theme(4), theme(5)) if t],
+        "vigilance": [v for v in (m.get("VIGIL1"), m.get("VIGIL2"), m.get("VIGIL3")) if v],
+    }
+
+
+def format_telegram(data):
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
-    sem = SENTIMENT_EMOJI.get(data["sentiment"], "➡️")
-    score = int(data["score"]) if data["score"].lstrip("-").isdigit() else 0
+    sentiment = data["sentiment"]
+    try:
+        score = int(data["score"])
+    except Exception:
+        score = 0
     bar_filled = round(abs(score) / 10)
-    bar = ("🟥" if score < 0 else "🟩") * bar_filled + "⬜" * (10 - bar_filled)
+    if score < 0:
+        bar = "[-]" * bar_filled + "[ ]" * (10 - bar_filled)
+    else:
+        bar = "[+]" * bar_filled + "[ ]" * (10 - bar_filled)
+
+    sign = "+" if score > 0 else ""
     lines = [
-        f"📡 *FJ Intelligence* — {now}",
-        f"",
-        f"{sem} *Sentiment : {data['sentiment']}*",
-        f"`{bar}` {'+' if score > 0 else ''}{score}/100",
-        f"",
-        f"_{data['resume']}_",
-        f"",
-        f"━━━━━━━━━━━━━━━━",
-        f"*THEMES & HYPOTHESES*",
-        f"",
+        "*FJ Intelligence* -- " + now,
+        "",
+        "*Sentiment : " + sentiment + "*",
+        bar + " " + sign + str(score) + "/100",
+        "",
+        "_" + data["resume"] + "_",
+        "",
+        "----------------",
+        "*THEMES et HYPOTHESES*",
+        "",
     ]
+
     for t in data["themes"]:
-        emoji = IMPACT_EMOJI.get(t["impact"], "🟡")
+        label = IMPACT_LABEL.get(t["impact"], "[MODERE]")
         lines += [
-            f"{emoji} *{t['titre']}* — `{t['actifs']}`",
-            f"{t['synthese']}",
-            f"💡 _{t['hypothese']}_",
-            f"",
+            label + " *" + t["titre"] + "* -- " + t["actifs"],
+            t["synthese"],
+            ">> " + t["hypothese"],
+            "",
         ]
+
     if data["vigilance"]:
-        lines += ["━━━━━━━━━━━━━━━━", "*⚠️ Points de vigilance*", ""]
+        lines += ["----------------", "*Points de vigilance*", ""]
         for v in data["vigilance"]:
-            lines.append(f"▸ {v}")
+            lines.append("- " + v)
         lines.append("")
-    lines.append("_⚠️ Analyse IA — pas un conseil en investissement_")
+
+    lines.append("_Analyse IA - pas un conseil en investissement_")
     return "\n".join(lines)
 
 
 async def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    url = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage"
     async with httpx.AsyncClient(timeout=30) as client:
         await client.post(url, json={
             "chat_id": TELEGRAM_CHAT_ID,
@@ -130,12 +159,12 @@ async def main():
     date_str = now.strftime("%A %d %B %Y a %H:%M")
     news = await call_claude(
         SEARCH_SYSTEM,
-        f"Date : {date_str}. Trouve les dernieres actualites des marches financiers.",
+        "Date : " + date_str + ". Trouve les dernieres actualites des marches financiers.",
         use_web_search=True,
     )
     structured = await call_claude(
         ANALYSIS_SYSTEM,
-        f"Voici le resume des actualites du jour :\n\n{news}",
+        "Voici le resume des actualites du jour :\n\n" + news,
     )
     data = parse_structured(structured)
     message = format_telegram(data)
@@ -144,3 +173,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+ENDOFFILE
+echo "OK - $(wc -l < /mnt/user-data/outputs/fj-telegram/analyst.py) lignes"
