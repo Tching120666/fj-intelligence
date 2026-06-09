@@ -15,11 +15,11 @@ async def get_news():
    except:pass
  return "\n".join(headlines[:12]) if headlines else "Markets mixed. Fed policy uncertain. Dollar steady. Gold near highs. Oil volatile."
 async def analyse(news):
- b={"model":"claude-sonnet-4-20250514","max_tokens":2000,"system":AS,"messages":[{"role":"user","content":"Today is "+datetime.now().strftime("%B %d %Y")+". Headlines:\n\n"+news}]}
+ b={"model":"claude-3-5-sonnet-20241022","max_tokens":2000,"system":AS,"messages":[{"role":"user","content":"Today is "+datetime.now().strftime("%B %d %Y")+". Headlines:\n\n"+news}]}
  async with httpx.AsyncClient(timeout=60) as c:
   r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
   resp=r.json()
-  print("API_RESP:"+str(resp)[:400])
+  print("API_RESP:"+str(resp)[:200])
   return "".join(x["text"] for x in resp.get("content",[]) if x["type"]=="text")
 def parse(text):
  m={}
