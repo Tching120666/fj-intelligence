@@ -1,4 +1,3 @@
-cat > /mnt/user-data/outputs/fj-telegram/analyst.py << 'ENDOFFILE'
 import os
 import httpx
 import asyncio
@@ -6,9 +5,7 @@ from datetime import datetime
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
-
-SEARCH_SYSTEM = (
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]SEARCH_SYSTEM = (
     "Tu es un assistant specialise en actualites financieres. "
     "Utilise web_search pour trouver les dernieres actualites des marches financiers du jour. "
     "Fais plusieurs recherches : actualites marches financiers, forex macro news, banques centrales taux. "
@@ -42,11 +39,7 @@ ANALYSIS_SYSTEM = (
     "Reponds UNIQUEMENT avec ces lignes. Rien dautre."
 )
 
-IMPACT_LABEL = {"FORT": "[FORT]", "MODERE": "[MODERE]", "FAIBLE": "[FAIBLE]"}
-SENTIMENT_LABEL = {"RISK-ON": "RISK-ON", "RISK-OFF": "RISK-OFF", "NEUTRE": "NEUTRE"}
-
-
-async def call_claude(system, user_msg, use_web_search=False):
+IMPACT_LABEL = {"FORT": "[FORT]", "MODERE": "[MODERE]", "FAIBLE": "[FAIBLE]"}async def call_claude(system, user_msg, use_web_search=False):
     body = {
         "model": "claude-sonnet-4-20250514",
         "max_tokens": 1000,
@@ -94,11 +87,7 @@ def parse_structured(text):
         "score": m.get("SCORE", "0"),
         "resume": m.get("RESUME", ""),
         "themes": [t for t in (theme(1), theme(2), theme(3), theme(4), theme(5)) if t],
-        "vigilance": [v for v in (m.get("VIGIL1"), m.get("VIGIL2"), m.get("VIGIL3")) if v],
-    }
-
-
-def format_telegram(data):
+        "vigilance": [v for v in (m.get("VIGIL1"), m.get("VIGIL2"), m.get("VIGIL3")) if v],def format_telegram(data):
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
     sentiment = data["sentiment"]
     try:
@@ -110,7 +99,6 @@ def format_telegram(data):
         bar = "[-]" * bar_filled + "[ ]" * (10 - bar_filled)
     else:
         bar = "[+]" * bar_filled + "[ ]" * (10 - bar_filled)
-
     sign = "+" if score > 0 else ""
     lines = [
         "*FJ Intelligence* -- " + now,
@@ -124,7 +112,6 @@ def format_telegram(data):
         "*THEMES et HYPOTHESES*",
         "",
     ]
-
     for t in data["themes"]:
         label = IMPACT_LABEL.get(t["impact"], "[MODERE]")
         lines += [
@@ -133,13 +120,11 @@ def format_telegram(data):
             ">> " + t["hypothese"],
             "",
         ]
-
     if data["vigilance"]:
         lines += ["----------------", "*Points de vigilance*", ""]
         for v in data["vigilance"]:
             lines.append("- " + v)
         lines.append("")
-
     lines.append("_Analyse IA - pas un conseil en investissement_")
     return "\n".join(lines)
 
@@ -173,5 +158,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-ENDOFFILE
-echo "OK - $(wc -l < /mnt/user-data/outputs/fj-telegram/analyst.py) lignes"
+    }
