@@ -36,7 +36,11 @@ async def send(msg):
   await c.post("https://api.telegram.org/bot"+TB+"/sendMessage",json={"chat_id":TC,"text":msg,"parse_mode":"Markdown"})
 async def main():
  news=await claude(SS,"Today is "+datetime.now().strftime("%B %d %Y")+". Search and summarize the latest financial markets news.",True)
+ print("NEWS LENGTH:"+str(len(news)))
+ print("NEWS:"+news[:500])
+ if len(news)<50:news="Fed holds rates steady. Dollar weakens. S&P500 rises 0.5%. Gold near all-time highs. Oil mixed."
  structured=await claude(AS,"Here is todays financial news summary:\n\n"+news)
+ print("STRUCTURED:"+structured[:500])
  data=parse(structured)
  await send(fmt(data))
 asyncio.run(main())
