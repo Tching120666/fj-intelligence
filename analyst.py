@@ -18,7 +18,9 @@ async def analyse(news):
  b={"model":"claude-sonnet-4-20250514","max_tokens":2000,"system":AS,"messages":[{"role":"user","content":"Today is "+datetime.now().strftime("%B %d %Y")+". Headlines:\n\n"+news}]}
  async with httpx.AsyncClient(timeout=60) as c:
   r=await c.post("https://api.anthropic.com/v1/messages",headers={"Content-Type":"application/json","x-api-key":AK,"anthropic-version":"2023-06-01"},json=b)
-  return "".join(x["text"] for x in r.json().get("content",[]) if x["type"]=="text")
+  resp=r.json()
+  print("API_RESP:"+str(resp)[:400])
+  return "".join(x["text"] for x in resp.get("content",[]) if x["type"]=="text")
 def parse(text):
  m={}
  for l in text.splitlines():
